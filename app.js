@@ -892,13 +892,19 @@ function openAddTransaction(date = null) {
     const sheet = document.getElementById('addTransactionSheet');
     sheet.classList.add('open');
     
+    // 如果不是編輯模式，清空表單
+    if (!window.editingTransactionId) {
+        document.getElementById('transactionAmount').value = '';
+        document.getElementById('transactionNote').value = '';
+    }
+    
     if (date) {
         if (typeof date === 'string') {
             document.getElementById('transactionDate').value = date;
         } else {
             document.getElementById('transactionDate').value = date.toISOString().slice(0, 10);
         }
-    } else {
+    } else if (!window.editingTransactionId) {
         document.getElementById('transactionDate').value = new Date().toISOString().slice(0, 10);
     }
     
