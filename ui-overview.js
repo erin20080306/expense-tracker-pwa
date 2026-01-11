@@ -425,16 +425,16 @@ class OverviewScreenUI {
                 <div class="modal-body">
                     <div class="category-stats">
                         <div class="stat-item">
-                            <span>Total Amount</span>
+                            <span>總金額</span>
                             <span class="stat-amount">${this.app.formatCurrency(amount)}</span>
                         </div>
                         <div class="stat-item">
-                            <span>Transactions</span>
-                            <span class="stat-count">Loading...</span>
+                            <span>筆數</span>
+                            <span class="stat-count">載入中...</span>
                         </div>
                         <div class="stat-item">
-                            <span>Average</span>
-                            <span class="stat-average">Loading...</span>
+                            <span>平均</span>
+                            <span class="stat-average">載入中...</span>
                         </div>
                     </div>
                     <div class="category-chart">
@@ -541,7 +541,7 @@ class OverviewScreenUI {
     showCardDetails(card) {
         const isIncome = card.querySelector('.income-icon');
         const type = isIncome ? 'income' : 'expense';
-        const title = type === 'income' ? 'Income Details' : 'Expense Details';
+        const title = type === 'income' ? '收入詳情' : '支出詳情';
         
         const modal = document.createElement('div');
         modal.className = 'modal';

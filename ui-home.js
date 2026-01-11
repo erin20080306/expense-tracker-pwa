@@ -205,31 +205,31 @@ class HomeScreenUI {
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Transaction Details</h3>
+                    <h3>交易詳情</h3>
                     <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="transaction-detail-item">
-                        <span>Amount:</span>
+                        <span>金額：</span>
                         <span class="${transaction.type === 'income' ? 'income' : 'expense'}">
                             ${transaction.type === 'income' ? '+' : '-'}${this.app.formatCurrency(transaction.amount)}
                         </span>
                     </div>
                     <div class="transaction-detail-item">
-                        <span>Category:</span>
+                        <span>類別：</span>
                         <span>${transaction.category}</span>
                     </div>
                     <div class="transaction-detail-item">
-                        <span>Date:</span>
-                        <span>${new Date(transaction.date).toLocaleDateString()}</span>
+                        <span>日期：</span>
+                        <span>${new Date(transaction.date + 'T00:00:00').toLocaleDateString('zh-TW')}</span>
                     </div>
                     <div class="transaction-detail-item">
-                        <span>Note:</span>
-                        <span>${transaction.note || 'No note'}</span>
+                        <span>備註：</span>
+                        <span>${transaction.note || ''}</span>
                     </div>
                     <div class="modal-actions">
-                        <button class="edit-btn" onclick="homeUI.editTransaction('${transaction.id}')">Edit</button>
-                        <button class="delete-btn" onclick="homeUI.deleteTransaction('${transaction.id}')">Delete</button>
+                        <button class="edit-btn" onclick="homeUI.editTransaction('${transaction.id}')">編輯</button>
+                        <button class="delete-btn" onclick="homeUI.deleteTransaction('${transaction.id}')">刪除</button>
                     </div>
                 </div>
             </div>
@@ -266,7 +266,7 @@ class HomeScreenUI {
     }
 
     async deleteTransaction(transactionId) {
-        if (confirm('Are you sure you want to delete this transaction?')) {
+        if (confirm('確定要刪除這筆交易嗎？')) {
             try {
                 await db.deleteTransaction(transactionId);
                 this.app.updateAllData();
@@ -302,7 +302,7 @@ class HomeScreenUI {
             z-index: 1000;
             animation: slideDown 0.3s ease-out;
         `;
-        toast.textContent = 'Transaction deleted successfully';
+        toast.textContent = '已刪除交易';
         document.body.appendChild(toast);
         
         setTimeout(() => {
@@ -327,7 +327,7 @@ class HomeScreenUI {
             z-index: 1000;
             animation: slideDown 0.3s ease-out;
         `;
-        toast.textContent = 'Error deleting transaction';
+        toast.textContent = '刪除交易失敗';
         document.body.appendChild(toast);
         
         setTimeout(() => {

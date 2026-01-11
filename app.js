@@ -222,7 +222,7 @@ class ExpenseTracker {
                 if (isValid) {
                     this.showMainApp();
                 } else {
-                    alert('Incorrect PIN. Please try again.');
+                    alert('PIN 錯誤，請再試一次');
                     document.getElementById('pinInput').value = '';
                 }
             }
@@ -784,7 +784,7 @@ class ExpenseTracker {
 
     // PIN functions
     async showPinSetupDialog() {
-        const pin = prompt('Set a 4-6 digit PIN:');
+        const pin = prompt('設定 4-6 位數 PIN：');
         if (pin && pin.length >= 4 && pin.length <= 6 && /^\d+$/.test(pin)) {
             const encoder = new TextEncoder();
             const data = encoder.encode(pin);
@@ -827,7 +827,7 @@ class ExpenseTracker {
             console.log('OCR Result:', result.data.text);
         } catch (error) {
             console.error('Error scanning receipt:', error);
-            alert('Error scanning receipt. Please try again.');
+            alert('掃描收據失敗，請重試');
         }
     }
 
@@ -872,10 +872,10 @@ class ExpenseTracker {
                     const data = JSON.parse(text);
                     await db.importData(data);
                     this.updateAllData();
-                    alert('Data imported successfully!');
+                    alert('已匯入資料');
                 } catch (error) {
                     console.error('Error importing data:', error);
-                    alert('Error importing data. Please check the file format.');
+                    alert('匯入失敗，請確認檔案格式');
                 }
             }
         };
