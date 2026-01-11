@@ -258,7 +258,7 @@ class HomeScreenUI {
                 openAddTransaction();
                 
                 // Store the transaction ID for updating
-                this.editingTransactionId = transactionId;
+                window.editingTransactionId = transactionId;
             }
         } catch (error) {
             console.error('Error editing transaction:', error);

@@ -621,7 +621,7 @@ body {
 .calendar-days {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+    gap: 8px;
 }
 
 .calendar-day {
@@ -638,6 +638,7 @@ body {
     font-size: 14px;
     font-weight: 500;
     color: #1a1a1a;
+    border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .calendar-day:hover {
@@ -646,7 +647,10 @@ body {
 }
 
 .calendar-day.other-month {
-    opacity: 0.3;
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.55);
+    color: rgba(26, 26, 26, 0.35);
+    border: 1px dashed rgba(0, 0, 0, 0.08);
 }
 
 .calendar-day.today {

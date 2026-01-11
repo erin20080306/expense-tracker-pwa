@@ -1,14 +1,14 @@
 {
-  "name": "Expense Tracker PWA",
-  "short_name": "Expense Tracker",
-  "description": "A beautiful expense tracker app for managing your finances",
+  "name": "記帳本",
+  "short_name": "記帳",
+  "description": "簡單好用的記帳 PWA",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#C9B7FF",
   "theme_color": "#8B5CF6",
   "orientation": "portrait",
   "scope": "/",
-  "lang": "en",
+  "lang": "zh-TW",
   "categories": ["finance", "productivity", "business"],
   "icons": [
     {
@@ -26,9 +26,9 @@
   ],
   "shortcuts": [
     {
-      "name": "Add Transaction",
-      "short_name": "Add",
-      "description": "Quickly add a new transaction",
+      "name": "新增交易",
+      "short_name": "新增",
+      "description": "快速新增一筆交易",
       "url": "/?action=add",
       "icons": [
         {
@@ -38,9 +38,9 @@
       ]
     },
     {
-      "name": "View Overview",
-      "short_name": "Overview",
-      "description": "View spending overview and statistics",
+      "name": "查看總覽",
+      "short_name": "總覽",
+      "description": "查看支出總覽與統計",
       "url": "/?screen=overview",
       "icons": [
         {

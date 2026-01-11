@@ -487,23 +487,39 @@ class ExpenseDB {
 const db = new ExpenseDB();
 
 // Default categories
+const CATEGORY_NAME_MAP = {
+    'Salary': '薪水',
+    'Freelance': '接案',
+    'Bonus': '獎金',
+    'Investment': '投資',
+    'Other Income': '其他收入',
+    'Food & Dining': '餐飲',
+    'Transportation': '交通',
+    'Shopping': '購物',
+    'Entertainment': '娛樂',
+    'Bills & Utilities': '帳單',
+    'Healthcare': '醫療',
+    'Education': '教育',
+    'Other Expense': '其他支出'
+};
+
 const defaultCategories = [
     // Income categories
-    { name: 'Salary', type: 'income', icon: '💰' },
-    { name: 'Freelance', type: 'income', icon: '💼' },
-    { name: 'Bonus', type: 'income', icon: '🎁' },
-    { name: 'Investment', type: 'income', icon: '📈' },
-    { name: 'Other Income', type: 'income', icon: '💵' },
+    { name: '薪水', type: 'income', icon: '💰' },
+    { name: '接案', type: 'income', icon: '💼' },
+    { name: '獎金', type: 'income', icon: '🎁' },
+    { name: '投資', type: 'income', icon: '📈' },
+    { name: '其他收入', type: 'income', icon: '💵' },
     
     // Expense categories
-    { name: 'Food & Dining', type: 'expense', icon: '🍔' },
-    { name: 'Transportation', type: 'expense', icon: '🚗' },
-    { name: 'Shopping', type: 'expense', icon: '🛍️' },
-    { name: 'Entertainment', type: 'expense', icon: '🎮' },
-    { name: 'Bills & Utilities', type: 'expense', icon: '📱' },
-    { name: 'Healthcare', type: 'expense', icon: '🏥' },
-    { name: 'Education', type: 'expense', icon: '📚' },
-    { name: 'Other Expense', type: 'expense', icon: '📝' }
+    { name: '餐飲', type: 'expense', icon: '🍔' },
+    { name: '交通', type: 'expense', icon: '🚗' },
+    { name: '購物', type: 'expense', icon: '🛍️' },
+    { name: '娛樂', type: 'expense', icon: '🎮' },
+    { name: '帳單', type: 'expense', icon: '📱' },
+    { name: '醫療', type: 'expense', icon: '🏥' },
+    { name: '教育', type: 'expense', icon: '📚' },
+    { name: '其他支出', type: 'expense', icon: '📝' }
 ];
 
 // Initialize default categories if they don't exist
@@ -513,6 +529,23 @@ async function initializeDefaultCategories() {
         if (existingCategories.length === 0) {
             for (const category of defaultCategories) {
                 await db.addCategory(category);
+            }
+        } else {
+            // Migrate existing English category names to Chinese
+            const categories = existingCategories;
+            for (const category of categories) {
+                const mappedName = CATEGORY_NAME_MAP[category.name];
+                if (mappedName && mappedName !== category.name) {
+                    await db.updateCategory(category.id, { name: mappedName });
+                }
+            }
+
+            const transactions = await db.getTransactions(null);
+            for (const transaction of transactions) {
+                const mappedCategory = CATEGORY_NAME_MAP[transaction.category];
+                if (mappedCategory && mappedCategory !== transaction.category) {
+                    await db.updateTransaction(transaction.id, { category: mappedCategory });
+                }
             }
         }
     } catch (error) {
@@ -530,35 +563,35 @@ async function initializeSampleData() {
                     date: new Date().toISOString().slice(0, 10),
                     type: 'expense',
                     amount: 450,
-                    category: 'Food & Dining',
+                    category: '餐飲',
                     note: 'Money Transfer'
                 },
                 {
                     date: new Date().toISOString().slice(0, 10),
                     type: 'income',
                     amount: 1200,
-                    category: 'Salary',
+                    category: '薪水',
                     note: 'Paypal'
                 },
                 {
                     date: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
                     type: 'expense',
                     amount: 150,
-                    category: 'Transportation',
+                    category: '交通',
                     note: 'Uber'
                 },
                 {
                     date: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
                     type: 'expense',
                     amount: 200,
-                    category: 'Shopping',
+                    category: '購物',
                     note: 'Bata Store'
                 },
                 {
                     date: new Date(Date.now() - 172800000).toISOString().slice(0, 10),
                     type: 'expense',
                     amount: 600,
-                    category: 'Bills & Utilities',
+                    category: '帳單',
                     note: 'Bank Transfer'
                 }
             ];

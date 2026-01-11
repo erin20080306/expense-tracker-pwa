@@ -543,13 +543,16 @@ class ExpenseTracker {
         });
 
         if (Object.keys(categories).length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No categories yet</p>';
+            container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">尚無類別</p>';
         }
     }
 
     async updateCalendarScreen() {
         try {
-            this.updateCalendarGrid();
+            if (window.calendarUI && typeof window.calendarUI.updateCalendar === 'function') {
+                await window.calendarUI.updateCalendar();
+                return;
+            }
         } catch (error) {
             console.error('Error updating calendar screen:', error);
         }
@@ -662,12 +665,12 @@ class ExpenseTracker {
         try {
             const currentMonth = new Date().toISOString().slice(0, 7);
             const budget = await db.getBudget(currentMonth);
-            
+
             if (budget.amount > 0) {
                 const startDate = currentMonth + '-01';
                 const endDate = currentMonth + '-31';
                 const stats = await db.getStatistics(startDate, endDate);
-                
+
                 const spent = stats.totalExpenses;
                 const remaining = budget.amount - spent;
                 const percentage = (spent / budget.amount) * 100;
@@ -675,20 +678,22 @@ class ExpenseTracker {
                 const progressCard = document.getElementById('budgetProgressCard');
                 progressCard.style.display = 'block';
 
-                document.getElementById('budgetRemaining').textContent = this.formatCurrency(remaining) + ' remaining';
-                document.getElementById('budgetSpent').textContent = this.formatCurrency(spent) + ' spent';
-                document.getElementById('budgetTotal').textContent = 'of ' + this.formatCurrency(budget.amount);
+                const remainingEl = document.getElementById('budgetRemaining');
+                remainingEl.textContent = '剩餘 ' + this.formatCurrency(remaining);
+
+                document.getElementById('budgetSpent').textContent = '已用 ' + this.formatCurrency(spent);
+                document.getElementById('budgetTotal').textContent = '總額 ' + this.formatCurrency(budget.amount);
 
                 const progressFill = document.getElementById('budgetProgressFill');
                 progressFill.style.width = Math.min(percentage, 100) + '%';
 
                 if (percentage > 100) {
                     progressFill.classList.add('over-budget');
-                    document.getElementById('budgetRemaining').textContent = 'Over budget by ' + this.formatCurrency(Math.abs(remaining));
-                    document.getElementById('budgetRemaining').style.color = '#EF4444';
+                    remainingEl.textContent = '超出預算 ' + this.formatCurrency(Math.abs(remaining));
+                    remainingEl.style.color = '#EF4444';
                 } else {
                     progressFill.classList.remove('over-budget');
-                    document.getElementById('budgetRemaining').style.color = '#10B981';
+                    remainingEl.style.color = '#10B981';
                 }
             } else {
                 document.getElementById('budgetProgressCard').style.display = 'none';
@@ -715,7 +720,7 @@ class ExpenseTracker {
         if (date.toDateString() === today.toDateString()) {
             return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         } else if (date.toDateString() === yesterday.toDateString()) {
-            return 'Yesterday';
+            return '昨天';
         } else {
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }
@@ -888,7 +893,11 @@ function openAddTransaction(date = null) {
     sheet.classList.add('open');
     
     if (date) {
-        document.getElementById('transactionDate').value = date.toISOString().slice(0, 10);
+        if (typeof date === 'string') {
+            document.getElementById('transactionDate').value = date;
+        } else {
+            document.getElementById('transactionDate').value = date.toISOString().slice(0, 10);
+        }
     } else {
         document.getElementById('transactionDate').value = new Date().toISOString().slice(0, 10);
     }
@@ -1047,7 +1056,7 @@ async function loadCategoriesForManagement() {
             item.className = 'category-management-item';
             item.innerHTML = `
                 <span>${category.icon} ${category.name}</span>
-                <button class="delete-category-btn" onclick="deleteCategory('${category.id}')">Delete</button>
+                <button class="delete-category-btn" onclick="deleteCategory('${category.id}')">刪除</button>
             `;
             container.appendChild(item);
         });
@@ -1061,7 +1070,7 @@ async function addCategory() {
     const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
     
     if (!name) {
-        alert('Please enter a category name');
+        alert('請輸入類別名稱');
         return;
     }
 
@@ -1078,19 +1087,19 @@ async function addCategory() {
         app.updateCategoryOptions();
     } catch (error) {
         console.error('Error adding category:', error);
-        alert('Error adding category. Please try again.');
+        alert('新增類別失敗，請重試');
     }
 }
 
 async function deleteCategory(id) {
-    if (confirm('Are you sure you want to delete this category?')) {
+    if (confirm('確定要刪除此類別嗎？')) {
         try {
             await db.deleteCategory(id);
             loadCategoriesForManagement();
             app.updateCategoryOptions();
         } catch (error) {
             console.error('Error deleting category:', error);
-            alert('Error deleting category. Please try again.');
+            alert('刪除類別失敗，請重試');
         }
     }
 }

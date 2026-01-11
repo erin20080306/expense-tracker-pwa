@@ -8,6 +8,13 @@ class CalendarScreenUI {
         this.init();
     }
 
+    formatDateKey(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
     init() {
         this.setupEventListeners();
         this.setupCalendarInteractions();
@@ -38,7 +45,7 @@ class CalendarScreenUI {
         // Calendar day clicks
         document.addEventListener('click', (e) => {
             const dayElement = e.target.closest('.calendar-day');
-            if (dayElement && !dayElement.classList.contains('other-month')) {
+            if (dayElement) {
                 this.handleDayClick(dayElement);
             }
         });
@@ -182,8 +189,8 @@ class CalendarScreenUI {
         const prevEndDate = prevLastDay.getDate();
 
         // Get transactions for the month
-        const monthStart = new Date(year, month, 1).toISOString().slice(0, 10);
-        const monthEnd = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+        const monthStart = this.formatDateKey(new Date(year, month, 1));
+        const monthEnd = this.formatDateKey(new Date(year, month + 1, 0));
         const monthTransactions = await db.getTransactionsByDateRange(monthStart, monthEnd);
 
         // Previous month days
@@ -214,7 +221,7 @@ class CalendarScreenUI {
     async createDayElement(day, isOtherMonth, date, monthTransactions) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
-        dayElement.dataset.date = date.toISOString().slice(0, 10);
+        dayElement.dataset.date = this.formatDateKey(date);
         
         if (isOtherMonth) {
             dayElement.classList.add('other-month');
@@ -226,7 +233,7 @@ class CalendarScreenUI {
         }
 
         // Get transactions for this specific date
-        const dateStr = date.toISOString().slice(0, 10);
+        const dateStr = this.formatDateKey(date);
         const dayTransactions = monthTransactions.filter(t => t.date === dateStr);
         
         if (dayTransactions.length > 0) {
@@ -328,7 +335,7 @@ class CalendarScreenUI {
 
     handleDayClick(dayElement) {
         const dateStr = dayElement.dataset.date;
-        const date = new Date(dateStr);
+        const date = new Date(dateStr + 'T00:00:00');
         
         this.selectedDate = date;
         this.showDayDetails(date, dayElement);
@@ -336,26 +343,32 @@ class CalendarScreenUI {
 
     async showDayDetails(date, dayElement) {
         try {
-            const transactions = await db.getTransactionsByDate(date.toISOString().slice(0, 10));
+            const dateKey = this.formatDateKey(date);
+            const transactions = await db.getTransactionsByDate(dateKey);
             // Always show day details modal (with or without transactions)
-            this.showDayTransactions(date, transactions);
+            this.showDayTransactions(date, transactions, dateKey);
         } catch (error) {
             console.error('Error showing day details:', error);
         }
     }
 
-    openAddTransactionForDate(date) {
+    openAddTransactionForDate(dateKey) {
         // Set the date in the transaction form
-        document.getElementById('transactionDate').value = date.toISOString().slice(0, 10);
+        document.getElementById('transactionDate').value = dateKey;
         
+        // Close current day details modal (if any)
+        const modal = document.querySelector('.modal');
+        if (modal) modal.remove();
+
         // Open the bottom sheet
-        openAddTransaction();
+        openAddTransaction(dateKey);
     }
 
-    showDayTransactions(date, transactions) {
+    showDayTransactions(date, transactions, dateKey) {
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.style.display = 'flex';
+        modal.dataset.date = dateKey;
         
         const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
         const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
@@ -402,7 +415,7 @@ class CalendarScreenUI {
                     </div>
                     <div class="transactions-list-header">
                         <h4>交易明細</h4>
-                        <button class="add-transaction-btn" onclick="calendarUI.openAddTransactionForDate(new Date('${date.toISOString()}'))">
+                        <button class="add-transaction-btn" onclick="calendarUI.openAddTransactionForDate('${dateKey}')">
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                 <path d="M8 2V14M2 8H14" stroke="white" stroke-width="2" stroke-linecap="round"/>
                             </svg>
@@ -473,7 +486,7 @@ class CalendarScreenUI {
                 openAddTransaction();
                 
                 // Store for editing
-                this.editingTransactionId = transactionId;
+                window.editingTransactionId = transactionId;
                 
                 // Close modal
                 document.querySelector('.modal').remove();
@@ -484,15 +497,15 @@ class CalendarScreenUI {
     }
 
     async deleteTransaction(transactionId) {
-        if (confirm('Are you sure you want to delete this transaction?')) {
+        if (confirm('確定要刪除這筆交易嗎？')) {
             try {
                 await db.deleteTransaction(transactionId);
                 
                 // Refresh the modal
                 const modal = document.querySelector('.modal');
                 if (modal) {
-                    const date = new Date(modal.querySelector('h3').textContent);
-                    const transactions = await db.getTransactionsByDate(date.toISOString().slice(0, 10));
+                    const dateKey = modal.dataset.date;
+                    const transactions = await db.getTransactionsByDate(dateKey);
                     
                     if (transactions.length === 0) {
                         modal.remove();
@@ -535,7 +548,7 @@ class CalendarScreenUI {
 
     quickAddTransaction(dayElement) {
         const dateStr = dayElement.dataset.date;
-        const date = new Date(dateStr);
+        const date = new Date(dateStr + 'T00:00:00');
         
         // Show quick add dialog
         this.showQuickAddDialog(date);
@@ -545,27 +558,28 @@ class CalendarScreenUI {
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.style.display = 'flex';
+        const dateKey = this.formatDateKey(date);
         
         modal.innerHTML = `
             <div class="modal-content quick-add-modal">
                 <div class="modal-header">
-                    <h3>Quick Add - ${date.toLocaleDateString()}</h3>
+                    <h3>快速新增 - ${date.toLocaleDateString('zh-TW')}</h3>
                     <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="quick-add-options">
-                        <button class="quick-add-option income" onclick="calendarUI.quickAddAmount('${date.toISOString()}', 'income')">
+                        <button class="quick-add-option income" onclick="calendarUI.quickAddAmount('${dateKey}', 'income')">
                             <div class="option-icon">💰</div>
                             <div class="option-text">
-                                <div class="option-title">Add Income</div>
-                                <div class="option-subtitle">Quick income entry</div>
+                                <div class="option-title">新增收入</div>
+                                <div class="option-subtitle">快速新增收入</div>
                             </div>
                         </button>
-                        <button class="quick-add-option expense" onclick="calendarUI.quickAddAmount('${date.toISOString()}', 'expense')">
+                        <button class="quick-add-option expense" onclick="calendarUI.quickAddAmount('${dateKey}', 'expense')">
                             <div class="option-icon">💸</div>
                             <div class="option-text">
-                                <div class="option-title">Add Expense</div>
-                                <div class="option-subtitle">Quick expense entry</div>
+                                <div class="option-title">新增支出</div>
+                                <div class="option-subtitle">快速新增支出</div>
                             </div>
                         </button>
                     </div>
@@ -577,7 +591,7 @@ class CalendarScreenUI {
                             <button class="amount-btn" onclick="calendarUI.setQuickAmount(100)">$100</button>
                             <button class="amount-btn" onclick="calendarUI.setQuickAmount(500)">$500</button>
                         </div>
-                        <input type="number" id="quickAmount" placeholder="Custom amount" class="quick-amount-input">
+                        <input type="number" id="quickAmount" placeholder="自訂金額" class="quick-amount-input">
                     </div>
                 </div>
             </div>
@@ -590,7 +604,7 @@ class CalendarScreenUI {
     quickAddAmount(dateStr, type) {
         const amount = document.getElementById('quickAmount').value;
         if (!amount) {
-            alert('Please enter an amount');
+            alert('請輸入金額');
             return;
         }
         
@@ -607,8 +621,8 @@ class CalendarScreenUI {
                 date: dateStr,
                 type,
                 amount,
-                category: type === 'income' ? 'Other Income' : 'Other Expense',
-                note: 'Quick add'
+                category: type === 'income' ? '其他收入' : '其他支出',
+                note: '快速新增'
             };
             
             await db.addTransaction(transaction);
@@ -643,7 +657,7 @@ class CalendarScreenUI {
             z-index: 1000;
             animation: slideUp 0.3s ease-out;
         `;
-        toast.textContent = 'Transaction added successfully';
+        toast.textContent = '已新增交易';
         document.body.appendChild(toast);
         
         setTimeout(() => {
@@ -659,12 +673,12 @@ class CalendarScreenUI {
         
         const currentYear = new Date().getFullYear();
         const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
-        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
         
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Select Month</h3>
+                    <h3>選擇月份</h3>
                     <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
                 </div>
                 <div class="modal-body">

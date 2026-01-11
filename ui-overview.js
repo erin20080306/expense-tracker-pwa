@@ -349,7 +349,7 @@ class OverviewScreenUI {
                 options.year = 'numeric';
             }
             
-            dateRangeElement.textContent = `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
+            dateRangeElement.textContent = `${start.toLocaleDateString('zh-TW', options)} - ${end.toLocaleDateString('zh-TW', options)}`;
         }
     }
 
@@ -371,7 +371,7 @@ class OverviewScreenUI {
             container.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #666;">
                     <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
-                    <p>No ${this.currentView} categories yet</p>
+                    <p>${this.currentView === 'income' ? '尚無收入類別' : '尚無支出類別'}</p>
                 </div>
             `;
             return;
