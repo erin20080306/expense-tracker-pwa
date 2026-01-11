@@ -812,36 +812,298 @@ class ExpenseTracker {
     async handleReceiptFile(file) {
         if (!file) return;
 
+        // Show loading indicator
+        this.showScanningProgress();
+
         try {
-            // Use Tesseract.js for OCR
-            const result = await Tesseract.recognize(file, 'eng', {
-                logger: m => console.log(m)
+            // Use Tesseract.js for OCR with Chinese + English
+            const result = await Tesseract.recognize(file, 'chi_tra+eng', {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        this.updateScanningProgress(Math.round(m.progress * 100));
+                    }
+                }
             });
 
-            // Extract amount from OCR text
-            const amount = this.extractAmountFromText(result.data.text);
-            if (amount) {
-                document.getElementById('transactionAmount').value = amount;
+            this.hideScanningProgress();
+
+            const ocrText = result.data.text;
+            console.log('OCR Result:', ocrText);
+
+            // Extract all data from receipt
+            const extractedData = this.extractReceiptData(ocrText);
+            
+            if (extractedData.amounts.length === 0) {
+                alert('未能識別出金額，請手動輸入');
+                return;
             }
 
-            console.log('OCR Result:', result.data.text);
+            // Show selection modal
+            this.showReceiptDataModal(extractedData);
+
         } catch (error) {
+            this.hideScanningProgress();
             console.error('Error scanning receipt:', error);
             alert('掃描收據失敗，請重試');
         }
     }
 
-    extractAmountFromText(text) {
-        // Simple regex to extract amounts
-        const amountRegex = /\$?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/g;
-        const matches = text.match(amountRegex);
-        
-        if (matches && matches.length > 0) {
-            // Remove commas and convert to number
-            return parseFloat(matches[0].replace(/[$,]/g, ''));
+    extractReceiptData(text) {
+        const data = {
+            amounts: [],
+            date: null,
+            invoiceNumber: null
+        };
+
+        // Extract amounts (Taiwan format: NT$, $, or just numbers)
+        // Match patterns like: NT$100, $100, 100元, 100.00, 1,234
+        const amountPatterns = [
+            /NT\$\s*([\d,]+(?:\.\d{2})?)/gi,
+            /\$\s*([\d,]+(?:\.\d{2})?)/g,
+            /([\d,]+(?:\.\d{2})?)\s*元/g,
+            /金額[\s:]*([\d,]+(?:\.\d{2})?)/gi,
+            /總計[\s:]*([\d,]+(?:\.\d{2})?)/gi,
+            /合計[\s:]*([\d,]+(?:\.\d{2})?)/gi,
+            /Total[\s:]*([\d,]+(?:\.\d{2})?)/gi,
+            /Amount[\s:]*([\d,]+(?:\.\d{2})?)/gi
+        ];
+
+        const foundAmounts = new Set();
+        amountPatterns.forEach(pattern => {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                const amount = parseFloat(match[1].replace(/,/g, ''));
+                if (amount > 0 && amount < 1000000) { // Reasonable amount range
+                    foundAmounts.add(amount);
+                }
+            }
+        });
+
+        // Also try to find standalone numbers that look like amounts
+        const standaloneNumbers = text.match(/\b(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\b/g);
+        if (standaloneNumbers) {
+            standaloneNumbers.forEach(numStr => {
+                const num = parseFloat(numStr.replace(/,/g, ''));
+                if (num >= 10 && num < 100000) { // Likely amounts
+                    foundAmounts.add(num);
+                }
+            });
         }
+
+        data.amounts = Array.from(foundAmounts).sort((a, b) => b - a); // Sort descending
+
+        // Extract date (Taiwan format: 113/01/11, 2024/01/11, 2024-01-11, 01/11)
+        const datePatterns = [
+            /(\d{3})[\/\-](\d{1,2})[\/\-](\d{1,2})/, // Taiwan year: 113/01/11
+            /(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/, // Western: 2024/01/11
+            /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/, // MM/DD/YYYY
+        ];
+
+        for (const pattern of datePatterns) {
+            const match = text.match(pattern);
+            if (match) {
+                let year, month, day;
+                if (match[1].length === 3) {
+                    // Taiwan year (ROC)
+                    year = parseInt(match[1]) + 1911;
+                    month = match[2].padStart(2, '0');
+                    day = match[3].padStart(2, '0');
+                } else if (match[1].length === 4) {
+                    year = match[1];
+                    month = match[2].padStart(2, '0');
+                    day = match[3].padStart(2, '0');
+                } else {
+                    month = match[1].padStart(2, '0');
+                    day = match[2].padStart(2, '0');
+                    year = match[3];
+                }
+                data.date = `${year}-${month}-${day}`;
+                break;
+            }
+        }
+
+        // Extract invoice number (Taiwan format: XX-12345678)
+        const invoicePatterns = [
+            /([A-Z]{2})[-\s]?(\d{8})/i, // Standard: AB-12345678
+            /發票號碼[\s:]*([A-Z]{2}[-\s]?\d{8})/i,
+            /Invoice[\s#:]*([A-Z0-9-]+)/i
+        ];
+
+        for (const pattern of invoicePatterns) {
+            const match = text.match(pattern);
+            if (match) {
+                data.invoiceNumber = match[1].toUpperCase() + (match[2] ? match[2] : '');
+                break;
+            }
+        }
+
+        return data;
+    }
+
+    showScanningProgress() {
+        const overlay = document.createElement('div');
+        overlay.id = 'scanningOverlay';
+        overlay.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.7);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            ">
+                <div style="
+                    background: white;
+                    padding: 30px;
+                    border-radius: 16px;
+                    text-align: center;
+                ">
+                    <div style="font-size: 40px; margin-bottom: 16px;">📷</div>
+                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">正在掃描收據...</div>
+                    <div style="
+                        width: 200px;
+                        height: 8px;
+                        background: #e5e5e5;
+                        border-radius: 4px;
+                        overflow: hidden;
+                    ">
+                        <div id="scanProgress" style="
+                            width: 0%;
+                            height: 100%;
+                            background: linear-gradient(90deg, #8B5CF6, #7C3AED);
+                            transition: width 0.3s;
+                        "></div>
+                    </div>
+                    <div id="scanProgressText" style="margin-top: 8px; color: #666;">0%</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    updateScanningProgress(percent) {
+        const progress = document.getElementById('scanProgress');
+        const text = document.getElementById('scanProgressText');
+        if (progress) progress.style.width = percent + '%';
+        if (text) text.textContent = percent + '%';
+    }
+
+    hideScanningProgress() {
+        const overlay = document.getElementById('scanningOverlay');
+        if (overlay) overlay.remove();
+    }
+
+    showReceiptDataModal(data) {
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = 'receiptDataModal';
+        modal.style.display = 'flex';
+
+        const amountOptions = data.amounts.map((amount, index) => `
+            <button class="amount-option ${index === 0 ? 'selected' : ''}" data-amount="${amount}" onclick="selectReceiptAmount(this, ${amount})">
+                ${this.formatCurrency(amount)}
+            </button>
+        `).join('');
+
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h3>📝 掃描結果</h3>
+                    <button class="close-btn" onclick="closeReceiptModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    ${data.date ? `
+                        <div style="margin-bottom: 16px;">
+                            <label style="font-weight: 600; color: #333;">📅 日期</label>
+                            <div style="margin-top: 4px; padding: 12px; background: #f3f4f6; border-radius: 8px;">
+                                ${data.date}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${data.invoiceNumber ? `
+                        <div style="margin-bottom: 16px;">
+                            <label style="font-weight: 600; color: #333;">🧾 發票號碼</label>
+                            <div style="margin-top: 4px; padding: 12px; background: #f3f4f6; border-radius: 8px;">
+                                ${data.invoiceNumber}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="font-weight: 600; color: #333;">💰 請選擇金額</label>
+                        <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${amountOptions}
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; display: flex; gap: 12px;">
+                        <button onclick="closeReceiptModal()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #e5e5e5;
+                            color: #333;
+                            border: none;
+                            border-radius: 8px;
+                            font-size: 14px;
+                            cursor: pointer;
+                        ">取消</button>
+                        <button onclick="applyReceiptData()" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #8B5CF6;
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            font-size: 14px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">套用</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Store data for later use
+        modal.dataset.date = data.date || '';
+        modal.dataset.invoiceNumber = data.invoiceNumber || '';
+        modal.dataset.selectedAmount = data.amounts[0] || '';
+
+        document.body.appendChild(modal);
+        this.addReceiptModalStyles();
+    }
+
+    addReceiptModalStyles() {
+        if (document.getElementById('receipt-modal-styles')) return;
         
-        return null;
+        const style = document.createElement('style');
+        style.id = 'receipt-modal-styles';
+        style.textContent = `
+            .amount-option {
+                padding: 10px 16px;
+                background: #f3f4f6;
+                border: 2px solid transparent;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .amount-option:hover {
+                background: #e5e7eb;
+            }
+            .amount-option.selected {
+                background: #EDE9FE;
+                border-color: #8B5CF6;
+                color: #7C3AED;
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     // Export/Import functions
@@ -1283,6 +1545,46 @@ async function deleteTransactionFromHome(transactionId) {
             alert('刪除失敗，請重試');
         }
     }
+}
+
+// Receipt scanning global functions
+function scanReceipt() {
+    app.scanReceipt();
+}
+
+function selectReceiptAmount(btn, amount) {
+    document.querySelectorAll('.amount-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    const modal = document.getElementById('receiptDataModal');
+    if (modal) modal.dataset.selectedAmount = amount;
+}
+
+function closeReceiptModal() {
+    const modal = document.getElementById('receiptDataModal');
+    if (modal) modal.remove();
+}
+
+function applyReceiptData() {
+    const modal = document.getElementById('receiptDataModal');
+    if (!modal) return;
+
+    const amount = modal.dataset.selectedAmount;
+    const date = modal.dataset.date;
+    const invoiceNumber = modal.dataset.invoiceNumber;
+
+    // Fill in the form
+    if (amount) {
+        document.getElementById('transactionAmount').value = amount;
+    }
+    if (date) {
+        document.getElementById('transactionDate').value = date;
+    }
+    if (invoiceNumber) {
+        document.getElementById('transactionNote').value = `發票: ${invoiceNumber}`;
+    }
+
+    // Close modal
+    closeReceiptModal();
 }
 
 // Initialize app when DOM is loaded

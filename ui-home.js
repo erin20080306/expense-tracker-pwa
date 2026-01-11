@@ -502,8 +502,16 @@ class HomeScreenUI {
     }
 }
 
-// Initialize home UI when DOM is loaded
+// Initialize home UI after app is ready
+function initHomeUI() {
+    if (window.app) {
+        window.homeUI = new HomeScreenUI(window.app);
+        window.homeUI.addAnimations();
+    } else {
+        setTimeout(initHomeUI, 100);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    window.homeUI = new HomeScreenUI(window.app);
-    window.homeUI.addAnimations();
+    setTimeout(initHomeUI, 50);
 });

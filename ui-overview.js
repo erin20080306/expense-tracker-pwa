@@ -848,8 +848,16 @@ class OverviewScreenUI {
     }
 }
 
-// Initialize overview UI when DOM is loaded
+// Initialize overview UI after app is ready
+function initOverviewUI() {
+    if (window.app) {
+        window.overviewUI = new OverviewScreenUI(window.app);
+        window.overviewUI.addCategoryAnimations();
+    } else {
+        setTimeout(initOverviewUI, 100);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    window.overviewUI = new OverviewScreenUI(window.app);
-    window.overviewUI.addCategoryAnimations();
+    setTimeout(initOverviewUI, 50);
 });
