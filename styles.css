@@ -621,17 +621,19 @@ body {
 .calendar-days {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
+    gap: 4px;
+    padding-bottom: 100px; /* Space for bottom nav */
 }
 
 .calendar-day {
-    aspect-ratio: 1;
+    min-height: 48px;
+    padding: 6px 4px;
     background: white;
-    border-radius: 12px;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
@@ -647,10 +649,10 @@ body {
 }
 
 .calendar-day.other-month {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.55);
-    color: rgba(26, 26, 26, 0.35);
-    border: 1px dashed rgba(0, 0, 0, 0.08);
+    opacity: 0.4;
+    background: rgba(200, 200, 200, 0.2);
+    color: rgba(26, 26, 26, 0.4);
+    border: 1px dashed rgba(0, 0, 0, 0.15);
 }
 
 .calendar-day.today {

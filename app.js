@@ -1283,6 +1283,7 @@ async function deleteTransactionFromHome(transactionId) {
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new ExpenseTracker();
+    window.app = app;
 });
 
 // Service Worker registration

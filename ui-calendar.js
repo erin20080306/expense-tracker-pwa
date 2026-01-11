@@ -1090,8 +1090,17 @@ class CalendarScreenUI {
     }
 }
 
-// Initialize calendar UI when DOM is loaded
+// Initialize calendar UI after app is ready
+function initCalendarUI() {
+    if (window.app) {
+        window.calendarUI = new CalendarScreenUI(window.app);
+        window.calendarUI.addModalStyles();
+    } else {
+        // Retry after a short delay if app not ready
+        setTimeout(initCalendarUI, 100);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    window.calendarUI = new CalendarScreenUI(window.app);
-    window.calendarUI.addModalStyles();
+    setTimeout(initCalendarUI, 50);
 });
