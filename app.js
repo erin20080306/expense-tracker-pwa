@@ -1215,7 +1215,12 @@ async function saveTransaction() {
         
         await db.addTransaction(transaction);
         closeAddTransaction();
-        app.updateAllData();
+        await app.updateAllData();
+        
+        // Also update calendar UI if it exists
+        if (window.calendarUI && typeof window.calendarUI.updateCalendar === 'function') {
+            await window.calendarUI.updateCalendar();
+        }
         
         console.log('Transaction saved successfully');
     } catch (error) {
@@ -1539,7 +1544,12 @@ async function deleteTransactionFromHome(transactionId) {
         try {
             await db.deleteTransaction(transactionId);
             closeTransactionActions();
-            app.updateAllData();
+            await app.updateAllData();
+            
+            // Also update calendar UI if it exists
+            if (window.calendarUI && typeof window.calendarUI.updateCalendar === 'function') {
+                await window.calendarUI.updateCalendar();
+            }
         } catch (error) {
             console.error('Error deleting transaction:', error);
             alert('刪除失敗，請重試');
