@@ -4,12 +4,36 @@ class OverviewScreenUI {
         this.app = app;
         this.currentPeriod = 'monthly';
         this.currentView = 'income';
+        this.selectedMonth = new Date(); // Track selected month
         this.init();
     }
 
     init() {
         this.setupEventListeners();
         this.setupChartInteractions();
+        this.updateMonthDisplay();
+    }
+    
+    // Month navigation
+    previousMonth() {
+        this.selectedMonth.setMonth(this.selectedMonth.getMonth() - 1);
+        this.updateMonthDisplay();
+        this.updateOverview();
+    }
+    
+    nextMonth() {
+        this.selectedMonth.setMonth(this.selectedMonth.getMonth() + 1);
+        this.updateMonthDisplay();
+        this.updateOverview();
+    }
+    
+    updateMonthDisplay() {
+        const monthEl = document.getElementById('overviewMonth');
+        if (monthEl) {
+            const year = this.selectedMonth.getFullYear();
+            const month = this.selectedMonth.getMonth() + 1;
+            monthEl.textContent = `${year}年${month}月`;
+        }
     }
 
     setupEventListeners() {
@@ -308,28 +332,29 @@ class OverviewScreenUI {
     }
 
     getDateRangeForPeriod(period) {
-        const now = new Date();
+        // Use selectedMonth instead of current date
+        const selectedDate = this.selectedMonth || new Date();
         let start, end;
         
         switch (period) {
             case 'weekly':
-                const dayOfWeek = now.getDay();
-                start = new Date(now);
-                start.setDate(now.getDate() - dayOfWeek);
+                const dayOfWeek = selectedDate.getDay();
+                start = new Date(selectedDate);
+                start.setDate(selectedDate.getDate() - dayOfWeek);
                 end = new Date(start);
                 end.setDate(start.getDate() + 6);
                 break;
             case 'monthly':
-                start = new Date(now.getFullYear(), now.getMonth(), 1);
-                end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+                end = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
                 break;
             case 'yearly':
-                start = new Date(now.getFullYear(), 0, 1);
-                end = new Date(now.getFullYear(), 11, 31);
+                start = new Date(selectedDate.getFullYear(), 0, 1);
+                end = new Date(selectedDate.getFullYear(), 11, 31);
                 break;
             default:
-                start = new Date(now.getFullYear(), now.getMonth(), 1);
-                end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+                end = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
         }
         
         return {
