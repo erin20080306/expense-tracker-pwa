@@ -446,23 +446,11 @@ class ExpenseTracker {
 
     async updateOverviewScreen() {
         try {
-            // Get current month data
-            const currentMonth = new Date().toISOString().slice(0, 7);
-            const startDate = currentMonth + '-01';
-            const endDate = currentMonth + '-31';
-            
-            const stats = await db.getStatistics(startDate, endDate);
-            
-            // Update overview cards
-            document.getElementById('overviewIncome').textContent = this.formatCurrency(stats.totalIncome);
-            document.getElementById('overviewExpenses').textContent = this.formatCurrency(stats.totalExpenses);
-
-            // Update chart
-            this.updateOverviewChart('monthly');
-
-            // Update categories list
-            this.updateCategoriesList(stats);
-
+            // Delegate to overviewUI if it exists
+            if (window.overviewUI && typeof window.overviewUI.updateOverview === 'function') {
+                await window.overviewUI.updateOverview();
+                return;
+            }
         } catch (error) {
             console.error('Error updating overview screen:', error);
         }

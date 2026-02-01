@@ -358,33 +358,42 @@ class OverviewScreenUI {
         // Use private variables for year and month
         const year = this._selectedYear;
         const month = this._selectedMonth;
-        let start, end;
+        let startStr, endStr;
+        
+        // Helper to format date as YYYY-MM-DD without timezone issues
+        const formatDate = (y, m, d) => {
+            return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        };
         
         switch (period) {
             case 'weekly':
                 const selectedDate = new Date(year, month, 15);
                 const dayOfWeek = selectedDate.getDay();
-                start = new Date(selectedDate);
-                start.setDate(selectedDate.getDate() - dayOfWeek);
-                end = new Date(start);
-                end.setDate(start.getDate() + 6);
+                const startDay = 15 - dayOfWeek;
+                const endDay = startDay + 6;
+                startStr = formatDate(year, month, startDay);
+                endStr = formatDate(year, month, endDay);
                 break;
             case 'monthly':
-                start = new Date(year, month, 1);
-                end = new Date(year, month + 1, 0);
+                // First day of month
+                startStr = formatDate(year, month, 1);
+                // Last day of month
+                const lastDay = new Date(year, month + 1, 0).getDate();
+                endStr = formatDate(year, month, lastDay);
                 break;
             case 'yearly':
-                start = new Date(year, 0, 1);
-                end = new Date(year, 11, 31);
+                startStr = formatDate(year, 0, 1);
+                endStr = formatDate(year, 11, 31);
                 break;
             default:
-                start = new Date(year, month, 1);
-                end = new Date(year, month + 1, 0);
+                startStr = formatDate(year, month, 1);
+                const defaultLastDay = new Date(year, month + 1, 0).getDate();
+                endStr = formatDate(year, month, defaultLastDay);
         }
         
         return {
-            start: start.toISOString().slice(0, 10),
-            end: end.toISOString().slice(0, 10)
+            start: startStr,
+            end: endStr
         };
     }
 
