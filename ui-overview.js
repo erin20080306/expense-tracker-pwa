@@ -538,49 +538,180 @@ class OverviewScreenUI {
         });
     }
 
-    showCardDetails(card) {
+    async showCardDetails(card) {
         const isIncome = card.querySelector('.income-icon');
         const type = isIncome ? 'income' : 'expense';
-        const title = type === 'income' ? '收入詳情' : '支出詳情';
+        const title = type === 'income' ? '💰 本月收入明細' : '💸 本月支出明細';
+        const totalAmount = card.querySelector('.card-amount').textContent;
+        
+        // Get transactions for current period
+        const dateRange = this.getDateRangeForPeriod(this.currentPeriod);
+        const transactions = await db.getTransactionsByDateRange(dateRange.start, dateRange.end);
+        const filteredTransactions = transactions.filter(t => t.type === type);
+        
+        // Group by category
+        const categoryTotals = {};
+        filteredTransactions.forEach(t => {
+            if (!categoryTotals[t.category]) {
+                categoryTotals[t.category] = { total: 0, count: 0, transactions: [] };
+            }
+            categoryTotals[t.category].total += t.amount;
+            categoryTotals[t.category].count++;
+            categoryTotals[t.category].transactions.push(t);
+        });
+        
+        // Sort categories by total amount
+        const sortedCategories = Object.entries(categoryTotals)
+            .sort((a, b) => b[1].total - a[1].total);
+        
+        // Build category summary HTML
+        const categorySummaryHTML = sortedCategories.map(([category, data]) => `
+            <div class="category-summary-item" onclick="overviewUI.showCategoryTransactions('${category}', '${type}')" style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px;
+                background: #f9fafb;
+                border-radius: 8px;
+                margin-bottom: 8px;
+                cursor: pointer;
+            ">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 20px;">${this.app.getCategoryIcon(category, type)}</span>
+                    <div>
+                        <div style="font-weight: 500;">${category}</div>
+                        <div style="font-size: 12px; color: #666;">${data.count} 筆</div>
+                    </div>
+                </div>
+                <div style="font-weight: 600; color: ${type === 'income' ? '#10B981' : '#EF4444'};">
+                    ${type === 'income' ? '+' : '-'}${this.app.formatCurrency(data.total)}
+                </div>
+            </div>
+        `).join('');
+        
+        // Build transactions list HTML
+        const transactionsHTML = filteredTransactions
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 10)
+            .map(t => `
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 10px 0;
+                    border-bottom: 1px solid #f0f0f0;
+                ">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 18px;">${this.app.getCategoryIcon(t.category, type)}</span>
+                        <div>
+                            <div style="font-weight: 500; font-size: 14px;">${t.category}</div>
+                            <div style="font-size: 12px; color: #888;">${t.date}${t.note ? ' · ' + t.note : ''}</div>
+                        </div>
+                    </div>
+                    <div style="font-weight: 600; color: ${type === 'income' ? '#10B981' : '#EF4444'};">
+                        ${type === 'income' ? '+' : '-'}${this.app.formatCurrency(t.amount)}
+                    </div>
+                </div>
+            `).join('');
         
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.style.display = 'flex';
         
         modal.innerHTML = `
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 420px; max-height: 85vh; overflow-y: auto;">
                 <div class="modal-header">
                     <h3>${title}</h3>
                     <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <div class="card-detail-content">
-                        <div class="detail-summary">
-                            <div class="summary-item">
-                                <span>This ${this.currentPeriod}</span>
-                                <span>${card.querySelector('.card-amount').textContent}</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>Last ${this.currentPeriod}</span>
-                                <span>Calculating...</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>Change</span>
-                                <span class="change-positive">+12.5%</span>
-                            </div>
+                    <div style="text-align: center; padding: 16px 0; border-bottom: 1px solid #eee; margin-bottom: 16px;">
+                        <div style="font-size: 28px; font-weight: 700; color: ${type === 'income' ? '#10B981' : '#EF4444'};">
+                            ${totalAmount}
                         </div>
-                        <div class="detail-chart">
-                            <canvas id="cardTrendChart" width="400" height="200"></canvas>
+                        <div style="color: #666; font-size: 14px; margin-top: 4px;">
+                            共 ${filteredTransactions.length} 筆交易
                         </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="font-size: 14px; color: #333; margin-bottom: 12px;">📊 分類統計</h4>
+                        ${categorySummaryHTML || '<div style="color: #999; text-align: center; padding: 20px;">暫無資料</div>'}
+                    </div>
+                    
+                    <div>
+                        <h4 style="font-size: 14px; color: #333; margin-bottom: 12px;">📝 最近交易</h4>
+                        ${transactionsHTML || '<div style="color: #999; text-align: center; padding: 20px;">暫無交易</div>'}
+                        ${filteredTransactions.length > 10 ? `
+                            <div style="text-align: center; margin-top: 12px;">
+                                <span style="color: #8B5CF6; font-size: 13px;">還有 ${filteredTransactions.length - 10} 筆交易...</span>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>
         `;
         
         document.body.appendChild(modal);
+    }
+    
+    async showCategoryTransactions(category, type) {
+        // Close previous modal
+        document.querySelectorAll('.modal').forEach(m => m.remove());
         
-        // Create trend chart for the card
-        this.createCardTrendChart(type, modal);
+        const dateRange = this.getDateRangeForPeriod(this.currentPeriod);
+        const transactions = await db.getTransactionsByDateRange(dateRange.start, dateRange.end);
+        const categoryTransactions = transactions.filter(t => t.category === category && t.type === type);
+        
+        const total = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
+        
+        const transactionsHTML = categoryTransactions
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .map(t => `
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 12px;
+                    background: #f9fafb;
+                    border-radius: 8px;
+                    margin-bottom: 8px;
+                ">
+                    <div>
+                        <div style="font-weight: 500;">${t.date}</div>
+                        <div style="font-size: 12px; color: #666;">${t.note || '無備註'}</div>
+                    </div>
+                    <div style="font-weight: 600; color: ${type === 'income' ? '#10B981' : '#EF4444'};">
+                        ${type === 'income' ? '+' : '-'}${this.app.formatCurrency(t.amount)}
+                    </div>
+                </div>
+            `).join('');
+        
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'flex';
+        
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h3>${this.app.getCategoryIcon(category, type)} ${category}</h3>
+                    <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="text-align: center; padding: 12px 0; border-bottom: 1px solid #eee; margin-bottom: 16px;">
+                        <div style="font-size: 24px; font-weight: 700; color: ${type === 'income' ? '#10B981' : '#EF4444'};">
+                            ${type === 'income' ? '+' : '-'}${this.app.formatCurrency(total)}
+                        </div>
+                        <div style="color: #666; font-size: 13px; margin-top: 4px;">
+                            共 ${categoryTransactions.length} 筆
+                        </div>
+                    </div>
+                    ${transactionsHTML || '<div style="color: #999; text-align: center; padding: 20px;">暫無交易</div>'}
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
     }
 
     createCardTrendChart(type, modal) {
