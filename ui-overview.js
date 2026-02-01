@@ -57,7 +57,12 @@ class OverviewScreenUI {
         // Toggle buttons
         document.querySelectorAll('.toggle-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                // Update active state
+                document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                
                 const type = e.currentTarget.dataset.type;
+                console.log('Toggle clicked:', type, 'cachedStats:', this.cachedStats);
                 if (type) {
                     this.currentView = type;
                     this.updateCategoriesList();
@@ -126,7 +131,10 @@ class OverviewScreenUI {
     async updateOverview() {
         try {
             const dateRange = this.getDateRangeForPeriod(this.currentPeriod);
+            console.log('Overview dateRange:', dateRange, 'Year:', this.selectedYear, 'Month:', this.selectedMonthIndex);
+            
             const stats = await db.getStatistics(dateRange.start, dateRange.end);
+            console.log('Overview stats:', stats);
             
             // Cache stats for toggle buttons
             this.cachedStats = stats;
@@ -393,17 +401,33 @@ class OverviewScreenUI {
 
     updateCategoriesList(stats = null) {
         const container = document.getElementById('categoriesList');
-        if (!container) return;
+        if (!container) {
+            console.log('categoriesList container not found');
+            return;
+        }
 
         container.innerHTML = '';
 
         // Use cached stats if no stats provided
         const useStats = stats || this.cachedStats;
-        if (!useStats) return;
+        console.log('updateCategoriesList - currentView:', this.currentView, 'useStats:', useStats);
+        
+        if (!useStats) {
+            console.log('No stats available');
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                    <p>請先選擇月份</p>
+                </div>
+            `;
+            return;
+        }
 
         const categories = this.currentView === 'income' ? 
             (useStats.incomeByCategory || {}) : 
             (useStats.expensesByCategory || {});
+        
+        console.log('Categories for', this.currentView, ':', categories);
 
         // Sort categories by amount
         const sortedCategories = Object.entries(categories)
