@@ -473,6 +473,10 @@ class CalendarScreenUI {
             const transaction = transactions.find(t => t.id === transactionId);
             
             if (transaction) {
+                // Close modal first
+                const modal = document.querySelector('.modal');
+                if (modal) modal.remove();
+                
                 // Populate the form
                 document.getElementById('transactionAmount').value = transaction.amount;
                 document.getElementById('transactionCategory').value = transaction.category;
@@ -482,14 +486,11 @@ class CalendarScreenUI {
                 // Set transaction type
                 this.app.setTransactionType(transaction.type);
                 
-                // Open the bottom sheet
-                openAddTransaction();
-                
-                // Store for editing
+                // Store for editing (must be set before opening form)
                 window.editingTransactionId = transactionId;
                 
-                // Close modal
-                document.querySelector('.modal').remove();
+                // Open the bottom sheet
+                openAddTransaction();
             }
         } catch (error) {
             console.error('Error editing transaction:', error);
@@ -501,10 +502,15 @@ class CalendarScreenUI {
             try {
                 await db.deleteTransaction(transactionId);
                 
-                // Refresh the modal
+                // Get modal and date info before any updates
                 const modal = document.querySelector('.modal');
-                if (modal) {
-                    const dateKey = modal.dataset.date;
+                const dateKey = modal ? modal.dataset.date : null;
+                
+                // Immediately update calendar first (user sees update right away)
+                await this.updateCalendar();
+                
+                // Then update modal if still open
+                if (modal && dateKey) {
                     const transactions = await db.getTransactionsByDate(dateKey);
                     
                     if (transactions.length === 0) {
@@ -512,15 +518,13 @@ class CalendarScreenUI {
                     } else {
                         // Refresh the transactions list
                         const listContainer = modal.querySelector('.day-transactions-list');
-                        listContainer.innerHTML = this.renderDayTransactions(transactions);
-                        
+                        if (listContainer) {
+                            listContainer.innerHTML = this.renderDayTransactions(transactions);
+                        }
                         // Update summary cards
                         this.updateSummaryCards(modal, transactions);
                     }
                 }
-                
-                // Update calendar
-                this.updateCalendar();
                 
             } catch (error) {
                 console.error('Error deleting transaction:', error);
@@ -627,11 +631,12 @@ class CalendarScreenUI {
             
             await db.addTransaction(transaction);
             
-            // Close modal
-            document.querySelector('.modal').remove();
+            // Close modal first
+            const modal = document.querySelector('.modal');
+            if (modal) modal.remove();
             
-            // Update calendar
-            this.updateCalendar();
+            // Immediately update calendar (no delay)
+            await this.updateCalendar();
             
             // Show success message
             this.showQuickAddSuccess();
